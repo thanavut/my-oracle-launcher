@@ -30,9 +30,10 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ใช้คำสั่ง create-job-apply-job ซึ่งเป็นวิธีที่เสถียรที่สุดในการเลี่ยง JSON error
+          # ส่งค่าแบบ JSON ตรงๆ เพื่อป้องกัน CLI ตีความชื่อ Parameter ผิด
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --execution-plan-strategy FROM_PLAN_ID_OR_STACK_ID \
+            --execution-plan-strategy "FROM_PLAN_ID_OR_STACK_ID" \
+            --from-json '{"executionPlanStrategy":"FROM_PLAN_ID_OR_STACK_ID"}' \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
