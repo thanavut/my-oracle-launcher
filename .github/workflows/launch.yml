@@ -2,19 +2,23 @@ name: Oracle ARM Grabber
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *' # สั่งรันทุก 30 นาที
+    - cron: '*/30 * * * *'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Oracle Stack
-        uses: oracle-actions/run-resource-manager-job@v1
+      - name: Setup OCI CLI
+        uses: oracle-actions/setup-oci-cli@v1
         with:
-          tenancy: ${{ secrets.OCI_TENANCY_ID }}
           user: ${{ secrets.OCI_USER_ID }}
-          key: ${{ secrets.OCI_PRIVATE_KEY }}
+          tenancy: ${{ secrets.OCI_TENANCY_ID }}
           fingerprint: ${{ secrets.OCI_FINGERPRINT }}
           region: ${{ secrets.OCI_REGION }}
-          stack_id: ${{ secrets.OCI_STACK_ID }}
-          operation: APPLY
+          key_content: ${{ secrets.OCI_PRIVATE_KEY }}
+
+      - name: Run Stack Job
+        run: |
+          oci resource-manager job create-apply-job \
+            --stack-id ${{ secrets.OCI_STACK_ID }} \
+            --execution-plan-strategy FROM_STACK
