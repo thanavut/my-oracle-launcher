@@ -30,10 +30,10 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ส่งค่าแบบ JSON ตรงๆ เพื่อป้องกัน CLI ตีความชื่อ Parameter ผิด
-          ~/bin/oci resource-manager job create-apply-job \
+          # ใช้คำสั่งพื้นฐานสร้าง Job โดยระบุ Operation เป็น APPLY ตรงๆ
+          # วิธีนี้จะดึงแผนล่าสุดจาก Stack อัตโนมัติโดยไม่ต้องใช้ execution-plan-strategy
+          ~/bin/oci resource-manager job create \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --execution-plan-strategy "FROM_PLAN_ID_OR_STACK_ID" \
-            --from-json '{"executionPlanStrategy":"FROM_PLAN_ID_OR_STACK_ID"}' \
+            --operation "APPLY" \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
