@@ -30,10 +30,9 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ใช้คำสั่งพื้นฐานสร้าง Job โดยระบุ Operation เป็น APPLY ตรงๆ
-          # วิธีนี้จะดึงแผนล่าสุดจาก Stack อัตโนมัติโดยไม่ต้องใช้ execution-plan-strategy
-          ~/bin/oci resource-manager job create \
+          # ใช้ AUTO_APPROVED เพื่อสร้างเครื่องโดยตรงจาก Stack ล่าสุด
+          ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --operation "APPLY" \
+            --execution-plan-strategy "AUTO_APPROVED" \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
