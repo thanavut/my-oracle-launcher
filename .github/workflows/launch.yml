@@ -1,8 +1,8 @@
 name: Oracle ARM Grabber
 on:
-  workflow_dispatch: # สำหรับกดรันเองมือถือ/คอม
+  workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *' # สั่งรันอัตโนมัติทุก 30 นาที
+    - cron: '*/30 * * * *'
 
 jobs:
   deploy:
@@ -16,11 +16,8 @@ jobs:
       - name: Configure OCI CLI
         run: |
           mkdir -p ~/.oci
-          # สร้างไฟล์ Key จาก Secret ที่คุณตั้งไว้
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/key.pem
           chmod 600 ~/.oci/key.pem
-          
-          # สร้างไฟล์ Config มาตรฐานสำหรับ OCI
           cat <<EOF > ~/.oci/config
           [DEFAULT]
           user=${{ secrets.OCI_USER_ID }}
@@ -31,9 +28,10 @@ jobs:
           EOF
           chmod 600 ~/.oci/config
 
-      - name: Run Stack Job (Grabber)
+      - name: Run Stack Job
         run: |
+          # ใช้คำสั่งสร้าง Job แบบดึงแผนจาก Stack โดยตรง (ไม่ต้องระบุ Strategy ซับซ้อน)
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id ${{ secrets.OCI_STACK_ID }} \
-            --execution-plan-strategy FROM_PLAN_ID_OR_STACK_ID \
-            --wait-for-state SUCCEEDED
+            --wait-for-state SUCCEEDED \
+            --wait-for-state FAILED
