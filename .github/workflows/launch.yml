@@ -30,8 +30,8 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ใช้คำสั่งสร้าง Job แบบดึงแผนจาก Stack โดยตรง (ไม่ต้องระบุ Strategy ซับซ้อน)
           ~/bin/oci resource-manager job create-apply-job \
-            --stack-id ${{ secrets.OCI_STACK_ID }} \
+            --stack-id "${{ secrets.OCI_STACK_ID }}" \
+            --execution-plan-strategy "FROM_PLAN_ID_OR_STACK_ID" \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
