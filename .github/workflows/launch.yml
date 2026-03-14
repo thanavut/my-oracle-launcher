@@ -30,10 +30,9 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # เปลี่ยนมาใช้คำสั่งพื้นฐานที่สุดเพื่อเลี่ยง Error เรื่อง executionPlanStrategy
-          ~/bin/oci resource-manager job create \
+          # ใช้คำสั่ง create-job-apply-job ซึ่งเป็นวิธีที่เสถียรที่สุดในการเลี่ยง JSON error
+          ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --operation "APPLY" \
-            --apply-job-plan-resolution "FROM_STACK" \
+            --execution-plan-strategy FROM_PLAN_ID_OR_STACK_ID \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
