@@ -16,15 +16,20 @@ jobs:
       - name: Configure OCI CLI
         run: |
           mkdir -p ~/.oci
-          echo "[DEFAULT]" > ~/.oci/config
-          echo "user=${{ secrets.OCI_USER_ID }}" >> ~/.oci/config
-          echo "fingerprint=${{ secrets.OCI_FINGERPRINT }}" >> ~/.oci/config
-          echo "tenancy=${{ secrets.OCI_TENANCY_ID }}" >> ~/.oci/config
-          echo "region=${{ secrets.OCI_REGION }}" >> ~/.oci/config
-          echo "key_file=~/.oci/key.pem" >> ~/.oci/config
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/config # เขียน Key ทับลงไปก่อน
+          # สร้างไฟล์ Key แยกต่างหาก
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/key.pem
           chmod 600 ~/.oci/key.pem
+          
+          # สร้างไฟล์ Config ให้ถูกต้องตามมาตรฐาน Oracle
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_ID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_ID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/key.pem
+          EOF
+          chmod 600 ~/.oci/config
 
       - name: Run Stack Job
         run: |
