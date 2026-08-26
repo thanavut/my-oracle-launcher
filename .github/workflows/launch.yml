@@ -31,10 +31,10 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ปรับลดสเปกเป็น 2 OCPU / 12GB RAM เพื่อแย่งคิวเครื่องที่หลุดมาง่ายขึ้น
+          # ปรับลดสเปกเป็น 1 OCPU / 6GB RAM เพื่อเพิ่มโอกาสคว้าเครื่องที่หลุดมาได้เร็วที่สุด
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --execution-plan-strategy "AUTO_APPROVED" \
-            --variables '{"ocpus":"2","memory_in_gbs":"6"}' \
+            --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
