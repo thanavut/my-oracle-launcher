@@ -29,12 +29,19 @@ jobs:
           EOF
           chmod 600 ~/.oci/config
 
+      - name: Update Stack Variables
+        run: |
+          # ปรับอัปเดตสเปกใน Stack เป็น 1 OCPU / 6GB RAM ก่อน
+          ~/bin/oci resource-manager stack update \
+            --stack-id "${{ secrets.OCI_STACK_ID }}" \
+            --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
+            --force
+
       - name: Run Stack Job
         run: |
-          # ปรับลดสเปกเป็น 1 OCPU / 6GB RAM เพื่อเพิ่มโอกาสคว้าเครื่องที่หลุดมาได้เร็วที่สุด
+          # สั่งสร้างเครื่องตามสเปกใหม่ที่อัปเดต
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --execution-plan-strategy "AUTO_APPROVED" \
-            --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
