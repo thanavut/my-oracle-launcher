@@ -1,4 +1,5 @@
 name: Oracle ARM Grabber
+
 on:
   workflow_dispatch:
   schedule:
@@ -30,9 +31,10 @@ jobs:
 
       - name: Run Stack Job
         run: |
-          # ใช้ AUTO_APPROVED เพื่อสร้างเครื่องโดยตรงจาก Stack ล่าสุด
+          # ปรับลดสเปกเป็น 2 OCPU / 12GB RAM เพื่อแย่งคิวเครื่องที่หลุดมาง่ายขึ้น
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --execution-plan-strategy "AUTO_APPROVED" \
+            --variables '{"ocpus":"2","memory_in_gbs":"6"}' \
             --wait-for-state SUCCEEDED \
             --wait-for-state FAILED
