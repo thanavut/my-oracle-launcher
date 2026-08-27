@@ -29,19 +29,64 @@ jobs:
           EOF
           chmod 600 ~/.oci/config
 
-      - name: Update Stack Variables
-        run: |
-          # ปรับอัปเดตสเปกใน Stack เป็น 1 OCPU / 6GB RAM ก่อน
-          ~/bin/oci resource-manager stack update \
-            --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
-            --force
-
       - name: Run Stack Job
+        id: apply
         run: |
-          # สั่งสร้างเครื่องตามสเปกใหม่ที่อัปเดต
+          # ยิง apply + รอผล (SUCCEEDED หรือ FAILED)
+          set +e
           ~/bin/oci resource-manager job create-apply-job \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --execution-plan-strategy "AUTO_APPROVED" \
             --wait-for-state SUCCEEDED \
-            --wait-for-state FAILED
+            --wait-for-state FAILED \
+            > job_result.json
+          CREATE_ERR=$?
+          set -e
+
+          if [ $CREATE_ERR -ne 0 ]; then
+            STATE="API_ERROR"
+          else
+            JOB_ID=$(python3 -c "import json;print(json.load(open('job_result.json'))['data']['id'])")
+            STATE=( /bin/ociresource−managerjobget−−job−id"(~/bin/oci resource-manager job get --job-id "( /bin/ociresource−managerjobget−−job−id"JOB_ID" \
+              --query 'data."lifecycle-state"' --raw-output)
+
+            # ดึง log ของ job เพื่อดู error จริง (capacity/limit)
+            LOGS=$(~/bin/oci resource-manager job get-job-logs \
+              --job-id "$JOB_ID" --level ERROR 2>/dev/null | \
+              python3 -c "
+import json,sys
+try:
+    rows=json.load(sys.stdin)['data']['items']
+    for r in rows:
+        print(r.get('message',''))
+except Exception:
+    pass" | tail -3)
+            echo "Last errors:"
+            echo "$LOGS"
+          fi
+
+          echo "state=STATE">>STATE" >>STATE">>GITHUB_OUTPUT
+          echo "APPLY STATE: $STATE"
+
+      - name: Notify Telegram on Success 🎉
+        if: steps.apply.outputs.state == 'SUCCEEDED'
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.CHAT_ID }}" \
+            -d text="🎉🎉🎉 ORACLE VM ได้แล้ว!!
+
+✅ Instance ถือกำเนิดสำเร็จ!
+
+👉 ไปดึง Public IP:
+Oracle Console → Compute → Instances → openclaw-server
+
+จากนั้น ssh ubuntu@<IP> เพื่อ deploy bot! 🐋"
+
+      - name: Summary Log
+        if: always()
+        run: |
+          case "${{ steps.apply.outputs.state }}" in
+            SUCCEEDED) echo "✅ SUCCESS - VM created!" ;;
+            FAILED)    echo "❌ Apply failed (จงใจแสดงเพื่อ grep log — ส่วนใหญ่ = out of host capacity, ปกติ)" ;;
+            *)         echo "⚠️ API error - ตรวจ secrets/config" ;;
+          esac
