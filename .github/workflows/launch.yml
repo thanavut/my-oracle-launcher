@@ -42,33 +42,26 @@ jobs:
           CREATE_ERR=$?
           set -e
 
-          if [ $CREATE_ERR -ne 0 ]; then
-            STATE="API_ERROR"
-          else
-            JOB_ID=$(python3 -c "import json;print(json.load(open('job_result.json'))['data']['id'])")
-            STATE=( /bin/ociresource−managerjobget−−job−id"(~/bin/oci resource-manager job get --job-id "( /bin/ociresource−managerjobget−−job−id"JOB_ID" \
-              --query 'data."lifecycle-state"' --raw-output)
-            ~/bin/oci resource-manager job get-job-logs \
-              --job-id "$JOB_ID" --level ERROR 2>/dev/null | tail -5 || true
+          STATE="API_ERROR"
+          if [ $CREATE_ERR -eq 0 ]; then
+            STATE=$(cat job_result.json | grep '"lifecycle-state"' | head -1 | cut -d'"' -f4)
           fi
 
-          echo "state=STATE">>STATE" >>STATE">>GITHUB_OUTPUT
           echo "APPLY STATE: $STATE"
+          echo "state=STATE">>STATE" >>STATE">>GITHUB_OUTPUT
 
       - name: Notify Telegram on Success
         if: steps.apply.outputs.state == 'SUCCEEDED'
         run: |
-          MSG="🎉🎉🎉 ORACLE VM ได้แล้ว!!%0A%0A✅ Instance ถือกำเนิดสำเร็จ!%0A%0A👉 ไปดึง Public IP:%0AOptic Console > Compute > Instances > openclaw-server%0A%0Assh ubuntu@<IP> เพื่อ deploy bot! 🐋"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            --data-urlencode "text=🎉🎉🎉 ORACLE VM ได้แล้ว!! ✅ Instance ถือกำเนิดสำเร็จ! 👉 Console → Compute → Instances → openclaw-server แล้ว ssh ubuntu@<IP> deploy bot 🐋"
+            --data-urlencode "text=🎉🎉🎉 ORACLE VM ได้แล้ว!! ✅ Instance ถือกำเนิดสำเร็จ! 👉 Console → Compute → Instances → openclaw-server แล้ว ssh ubuntu@IP deploy bot 🐋"
 
       - name: Summary Log
         if: always()
         run: |
           case "${{ steps.apply.outputs.state }}" in
             SUCCEEDED) echo "SUCCESS - VM created!" ;;
-            FAILED)    echo "Apply failed - mostly out of host capacity, will retry in 30 min" ;;
-            *)         echo "API error - check secrets/config" ;;
+            FAILED) echo "Apply failed - mostly out of host capacity, will retry in 30 min" ;;
+            *) echo "API error - check secrets/config" ;;
           esac
