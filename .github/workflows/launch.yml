@@ -24,7 +24,8 @@ jobs:
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
             --wait-for-state ACTIVE \
-            --max-wait-seconds 300
+            --max-wait-seconds 300 \
+            --force
 
       - name: Try Launch (Apply)
         id: apply
