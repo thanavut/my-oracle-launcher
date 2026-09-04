@@ -12,7 +12,7 @@ jobs:
       - name: Install OCI CLI
         run: pip install oci-cli --quiet
 
-      - name: Update Stack Variables (1 OCPU / 6 GB)
+      - name: Update Stack Variables (with retry)
         env:
           OCI_CLI_USER: ${{ secrets.OCI_USER_ID }}
           OCI_CLI_TENANCY: ${{ secrets.OCI_TENANCY_ID }}
@@ -20,14 +20,26 @@ jobs:
           OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_PRIVATE_KEY }}
           OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
         run: |
-          oci resource-manager stack update \
-            --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
-            --wait-for-state ACTIVE \
-            --max-wait-seconds 300 \
-            --force
+          for i in 1 2 3; do
+            echo "=== ความพยายามครั้งที่ $i ==="
+            if oci resource-manager stack update \
+              --stack-id "${{ secrets.OCI_STACK_ID }}" \
+              --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
+              --wait-for-state ACTIVE \
+              --max-wait-seconds 300 \
+              --connection-timeout 60 \
+              --read-timeout 120 \
+              --force; then
+              echo "อัปเดต stack สำเร็จ"
+              exit 0
+            fi
+            echo "ล้มเหลว รอ 15 วินาทีแล้วลองใหม่..."
+            sleep 15
+          done
+          echo "ลอง 3 ครั้งแล้วยัง timeout — อาจเป็นปัญหาเครือข่าย GitHub runner"
+          exit 1
 
-      - name: Try Launch (Apply)
+      - name: Try Launch (Apply, with retry)
         id: apply
         env:
           OCI_CLI_USER: ${{ secrets.OCI_USER_ID }}
@@ -36,14 +48,24 @@ jobs:
           OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_PRIVATE_KEY }}
           OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
         run: |
-          RESULT=$(oci resource-manager job create-apply-job \
-            --stack-id "${{ secrets.OCI_STACK_ID }}" \
-            --execution-plan-strategy AUTO_APPROVED \
-            --display-name "auto-launch-$(date +%s)" \
-            --wait-for-state SUCCEEDED \
-            --wait-for-state FAILED \
-            --max-wait-seconds 1800 \
-            --query 'data."lifecycle-state"' --raw-output 2>&1) || RESULT="FAILED"
+          for i in 1 2 3; do
+            echo "=== Apply ครั้งที่ $i ==="
+            RESULT=$(oci resource-manager job create-apply-job \
+              --stack-id "${{ secrets.OCI_STACK_ID }}" \
+              --execution-plan-strategy AUTO_APPROVED \
+              --display-name "auto-launch-$(date +%s)" \
+              --wait-for-state SUCCEEDED \
+              --wait-for-state FAILED \
+              --max-wait-seconds 1800 \
+              --connection-timeout 60 \
+              --read-timeout 120 \
+              --query 'data."lifecycle-state"' --raw-output 2>&1) || RESULT="NETWORK_ERROR"
+            if [ "RESULT"=="SUCCEEDED"]∣∣["RESULT" == "SUCCEEDED" ] || [ "RESULT"=="SUCCEEDED"]∣∣["RESULT" == "FAILED" ]; then
+              break
+            fi
+            echo "เชื่อมต่อมีปัญหา รอ 15 วินาทีแล้วลองใหม่..."
+            sleep 15
+          done
           echo "result=RESULT">>"RESULT" >> "RESULT">>"GITHUB_OUTPUT"
 
       - name: Notify Telegram
@@ -57,6 +79,8 @@ jobs:
             TEXT="🎉 ได้เครื่องแล้ว! A1 1 OCPU / 6GB สร้างสำเร็จ — เข้า OCI Console ดูได้เลย แล้วไปปิด workflow ใน GitHub ด้วย!"
           elif echo "$RESULT" | grep -qi "out of capacity\|LimitExceeded\|QuotaExceeded"; then
             TEXT="⏳ ยัง Out of Capacity — จะลองใหม่รอบหน้า (5 นาที)"
+          elif [ "$RESULT" == "NETWORK_ERROR" ]; then
+            TEXT="🌐 เชื่อมต่อ Oracle ไม่ได้ชั่วคราว (network timeout) — จะลองใหม่รอบหน้า"
           else
             TEXT="⚠️ Launch ล้มเหลว (state: $RESULT) — เปิดดู log ใน Actions"
           fi
