@@ -2,7 +2,7 @@ name: Launch OCI A1 Instance
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # รันทุก 5 นาที (ตามแผนใหม่)
+    - cron: '*/5 * * * *'   # รันทุก 5 นาที
   workflow_dispatch:         # ปุ่มกดรันเองได้
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
           oci resource-manager stack update \
             --stack-id "${{ secrets.OCI_STACK_ID }}" \
             --variables '{"ocpus":"1","memory_in_gbs":"6"}' \
-            --wait-for-state SUCCEEDED \
+            --wait-for-state ACTIVE \
             --max-wait-seconds 300
 
       - name: Try Launch (Apply)
