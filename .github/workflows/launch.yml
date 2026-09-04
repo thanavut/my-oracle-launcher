@@ -12,7 +12,28 @@ jobs:
       - name: Install OCI CLI
         run: pip install oci-cli --quiet
 
+      - name: Debug - connectivity & config
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_USER_ID }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_TENANCY_ID }}
+          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
+        run: |
+          echo "=== Region: [${OCI_CLI_REGION}] ==="
+          echo "=== Tenancy: [(echo(echo(echoOCI_CLI_TENANCY | cut -c1-22)...] ==="
+          echo "=== User: [(echo(echo(echoOCI_CLI_USER | cut -c1-22)...] ==="
+          echo "=== Fingerprint: [${OCI_CLI_FINGERPRINT}] ==="
+          echo "=== Key บรรทัดแรก: [(echo(echo(echoOCI_CLI_KEY_CONTENT | head -1)] ==="
+          echo "=== ทดสอบ curl ไป Oracle ==="
+          curl -s --max-time 15 -o /dev/null -w "HTTP %{http_code}\n" "https://resource-manager.${OCI_CLI_REGION}.oraclecloud.com" || echo "❌ ติดต่อไม่ได้"
+          echo "=== ทดสอบคำสั่ง oci ==="
+          oci resource-manager stack get \
+            --stack-id "${{ secrets.OCI_STACK_ID }}" \
+            --query 'data."lifecycle-state"' --raw-output || echo "OCI COMMAND ล้มเหลว"
+
       - name: Update Stack Variables (with retry)
+        if: success()
         env:
           OCI_CLI_USER: ${{ secrets.OCI_USER_ID }}
           OCI_CLI_TENANCY: ${{ secrets.OCI_TENANCY_ID }}
@@ -36,7 +57,7 @@ jobs:
             echo "ล้มเหลว รอ 15 วินาทีแล้วลองใหม่..."
             sleep 15
           done
-          echo "ลอง 3 ครั้งแล้วยัง timeout — อาจเป็นปัญหาเครือข่าย GitHub runner"
+          echo "ลอง 3 ครั้งแล้วยัง timeout"
           exit 1
 
       - name: Try Launch (Apply, with retry)
